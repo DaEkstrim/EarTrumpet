@@ -13,6 +13,7 @@ namespace EarTrumpet.UI.ViewModels
     public class FlyoutViewModel : BindableBase, IPopupHostViewModel, IFlyoutViewModel
     {
         public event EventHandler<object> WindowSizeInvalidated;
+
         public event EventHandler<object> StateChanged;
 
         public ModalDialogViewModel Dialog { get; }
@@ -25,6 +26,16 @@ namespace EarTrumpet.UI.ViewModels
         public ICommand ExpandCollapse { get; private set; }
         public InputType LastInput { get; private set; }
         public ICommand DisplaySettingsChanged { get; }
+
+        public string DeviceFilterCSV
+        {
+            get => _settings.DeviceFilterCSV;
+            set
+            {
+                _settings.DeviceFilterCSV = value;
+                RebuildDeviceList();
+            }
+        }
 
         private readonly DeviceCollectionViewModel _mainViewModel;
         private readonly DispatcherTimer _deBounceTimer;
@@ -67,6 +78,12 @@ namespace EarTrumpet.UI.ViewModels
 
         private void AddDevice(DeviceViewModel device)
         {
+            if (DeviceFilterCSV != null && DeviceFilterCSV.Length > 0)
+            {
+                if (DeviceFilterCSV.Split(',').All(f => device.DisplayName.IndexOf(f, StringComparison.OrdinalIgnoreCase) == -1))
+                    return;
+            }
+
             if (IsExpanded || Devices.Count == 0)
             {
                 device.Apps.CollectionChanged += Apps_CollectionChanged;
@@ -113,16 +130,7 @@ namespace EarTrumpet.UI.ViewModels
                     break;
 
                 case NotifyCollectionChangedAction.Reset:
-                    for (int i = Devices.Count - 1; i >= 0; i--)
-                    {
-                        RemoveDevice(Devices[i].Id);
-                    }
-
-                    foreach (var device in _mainViewModel.AllDevices)
-                    {
-                        AddDevice(device);
-                    }
-
+                    RebuildDeviceList();
                     OnDefaultPlaybackDeviceChanged(null, _mainViewModel.Default);
                     break;
 
@@ -130,6 +138,21 @@ namespace EarTrumpet.UI.ViewModels
                     throw new NotImplementedException();
             }
 
+            UpdateTextVisibility();
+            RaiseDevicesChanged();
+        }
+
+        private void RebuildDeviceList()
+        {
+            for (int i = Devices.Count - 1; i >= 0; i--)
+            {
+                RemoveDevice(Devices[i].Id);
+            }
+
+            foreach (var device in _mainViewModel.AllDevices)
+            {
+                AddDevice(device);
+            }
             UpdateTextVisibility();
             RaiseDevicesChanged();
         }
@@ -189,8 +212,9 @@ namespace EarTrumpet.UI.ViewModels
                 {
                     if (!Devices.Contains(device))
                     {
-                        device.Apps.CollectionChanged += Apps_CollectionChanged;
-                        Devices.Insert(0, device);
+                        AddDevice(device);
+                        //device.Apps.CollectionChanged += Apps_CollectionChanged;
+                        //Devices.Insert(0, device);
                     }
                 }
             }
@@ -239,6 +263,7 @@ namespace EarTrumpet.UI.ViewModels
                         BeginClose(InputType.Command);
                     }
                     break;
+
                 case FlyoutViewState.Closing_Stage1:
                     _mainViewModel.OnTrayFlyoutHidden();
                     Dialog.IsVisible = false;
@@ -248,9 +273,11 @@ namespace EarTrumpet.UI.ViewModels
                         _returnFocusToTray.Invoke();
                     }
                     break;
+
                 case FlyoutViewState.Closing_Stage2:
                     _deBounceTimer.Start();
                     break;
+
                 case FlyoutViewState.Hidden:
                     if (IsExpandingOrCollapsing)
                     {
@@ -334,6 +361,7 @@ namespace EarTrumpet.UI.ViewModels
                 case FlyoutViewState.Hidden:
                     BeginOpen(inputType);
                     break;
+
                 case FlyoutViewState.Open:
                     BeginClose(inputType);
                     break;

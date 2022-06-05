@@ -9,10 +9,15 @@ namespace EarTrumpet
     public class AppSettings
     {
         public event EventHandler<bool> UseLegacyIconChanged;
+
         public event Action FlyoutHotkeyTyped;
+
         public event Action MixerHotkeyTyped;
+
         public event Action SettingsHotkeyTyped;
+
         public event Action AbsoluteVolumeUpHotkeyTyped;
+
         public event Action AbsoluteVolumeDownHotkeyTyped;
 
         private ISettingsBag _settings = StorageFactory.GetSettings();
@@ -145,6 +150,12 @@ namespace EarTrumpet
                 return _settings.Get("IsTelemetryEnabled", IsTelemetryEnabledByDefault());
             }
             set => _settings.Set("IsTelemetryEnabled", value);
+        }
+
+        public string DeviceFilterCSV
+        {
+            get => _settings.Get<string>("DeviceFiltersCSV", "");
+            set => _settings.Set("DeviceFiltersCSV", value);
         }
 
         private bool IsTelemetryEnabledByDefault()
